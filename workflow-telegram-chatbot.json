@@ -1,0 +1,279 @@
+{
+  "name": "workflow-telegram-chatbot copy",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        -16
+      ],
+      "id": "8c923130-f7d6-437d-ab54-5c72a9d554b1",
+      "name": "Telegram Trigger",
+      "webhookId": "68f4ef0c-a7ad-4c95-a6ca-cf509571b41c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "604dc5aa-3656-41d2-a753-3ea2d4b548e4",
+              "name": "queue",
+              "value": "={{\n(() => {\n  const raw = ($json.message?.text || '').trim();\n\n  // remove acentos e coloca minúsculo\n  let s = raw.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();\n\n  // troca múltiplos espaços por 1\n  s = s.replace(/\\s+/g, ' ').trim();\n\n  // aceita \"cidade uf\" (sem vírgula) e transforma em \"cidade,UF\"\n  if (!s.includes(',')) {\n    const parts = s.split(' ');\n    if (parts.length >= 2) {\n      const uf = parts.pop().toUpperCase();\n      const city = parts.join(' ');\n      s = `${city},${uf}`;\n    }\n  } else {\n    // remove espaço em volta da vírgula e deixa UF maiúscula\n    const [city, uf] = s.split(',').map(t => t.trim());\n    s = `${city},${(uf || '').toUpperCase()}`;\n  }\n\n  // adiciona país BR (muito útil pro OpenWeather)\n  if (!s.endsWith(',BR')) s = `${s},BR`;\n\n  return s;\n})()\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -976,
+        -16
+      ],
+      "id": "70be5447-6b9e-4e67-9e89-49712184cfc0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.queue }}"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "lang",
+              "value": "pt_br"
+            },
+            {
+              "name": "appid",
+              "value": "="
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -752,
+        -16
+      ],
+      "id": "372f7fbd-845d-4c16-b518-3ae95ac0722f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f4fdbab9-3cda-4cd0-9f42-3bb4ebe372c5",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "02b21610-517a-4555-ba1f-ffcf58df1e40",
+              "leftValue": "={{ $json.body.main.temp }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -528,
+        -16
+      ],
+      "id": "7a58bd7d-7d3f-4442-9d5d-a4808dad940e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "19c1002f-6517-4260-986c-d8138b37cbad",
+              "name": "final_message",
+              "value": "={{`🌤️ A temperatura em ${$json.body.name} é de ${Math.round($json.body.main.temp)}°C.`}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        -112
+      ],
+      "id": "091e0c14-3461-433c-a3e3-19ce3dc3583c",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "text": "={{$json.final_message}}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -80,
+        -112
+      ],
+      "id": "5bfd279f-d968-4099-a44c-474068f017fa",
+      "name": "Send a text message",
+      "webhookId": "9859785a-b9ef-4df6-9fc7-cbb41ee5d312",
+      "credentials": {
+        "telegramApi": {
+          "id": "r4QZZWufglAf0gem",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json.message.chat.id}}",
+        "text": "❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        80
+      ],
+      "id": "81e59f7f-f9a4-47b9-b299-b841abae80ad",
+      "name": "Send a text message1",
+      "webhookId": "b59224e6-f75a-4ab8-bc22-aa00895bfa36",
+      "credentials": {
+        "telegramApi": {
+          "id": "r4QZZWufglAf0gem",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "067a6071-162f-4848-82b2-82184182688c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8588e28ca8bba044747b7b90b5c36b0e2c37984109ef62433641e20d497ec810"
+  },
+  "id": "zSkPslcinpBk4nS1",
+  "tags": []
+}
