@@ -1,49 +1,72 @@
-##Telegram Weather Chatbot (n8n)
+🌤️ Telegram Weather Chatbot (n8n)
 
-Este projeto implementa um chatbot no Telegram que retorna a temperatura atual de uma cidade brasileira utilizando a API OpenWeather e automação com n8n.
+Um chatbot automatizado no Telegram que retorna a temperatura atual de uma cidade brasileira utilizando a API OpenWeather e automação com n8n.
 
-O bot recebe uma mensagem com o formato Cidade,UF e responde com a temperatura atual em graus Celsius.
+O bot recebe uma mensagem no formato Cidade,UF e responde com a temperatura atual em graus Celsius.
+
+📌 Demonstração
+Entrada do usuário
+Uberlândia,MG
+Resposta do bot
+🌤️ A temperatura em Uberlândia é de 20°C.
+
+Caso a cidade não seja encontrada:
+
+❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).
+🚀 Tecnologias utilizadas
+
+n8n — Automação de workflows
+
+Telegram Bot API — Comunicação com o usuário
+
+OpenWeather API — Consulta de dados meteorológicos
+
+JavaScript Expressions (n8n) — Processamento de dados
+
+⚙️ Arquitetura do Workflow
+
+O fluxo de automação é composto pelos seguintes nós:
+
+Telegram Trigger
+      ↓
+Edit Fields (queue)
+      ↓
+HTTP Request (OpenWeather API)
+      ↓
+IF (validação da resposta)
+   ↓        ↓
+True      False
+ ↓          ↓
+Format     Telegram Error Message
+Message
+ ↓
+Telegram Send Message
+🔄 Funcionamento do Bot
+1️⃣ Telegram Trigger
+
+O workflow inicia quando o bot recebe uma mensagem do usuário no Telegram.
+
+Formato esperado da mensagem:
+
+Cidade,UF
 
 Exemplo:
 
-Usuário: Uberlândia,MG
-Bot: A temperatura em Uberlândia é de 20°C.
+Uberlândia,MG
+2️⃣ Normalização da entrada
 
-Se a cidade não for encontrada ou o formato estiver incorreto, o bot retorna:
-❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).
+A mensagem enviada é transformada em uma variável chamada queue, que será utilizada na consulta da API.
 
-##Tecnologias utilizadas
+Expressão utilizada no n8n:
 
-n8n – Automação de workflow
-Telegram Bot API
-OpenWeather API
-JavaScript Expressions (n8n)
-
-##Como funciona o workflow
-
-O fluxo do bot é dividido nas seguintes etapas:
-
-#Telegram Trigger
-
-O workflow inicia quando o bot recebe uma mensagem no Telegram.
-O texto enviado pelo usuário contém a cidade e estado no formato: Cidade,UF
-Exemplo: Uberlândia,MG
-
-#Normalização da entrada
-
-O texto recebido é transformado em uma variável chamada queue.
-Expressão utilizada:
 {{
 (() => {
   const raw = ($json.message?.text || '').trim();
 
-  // remove acentos e coloca minúsculo
   let s = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-  // troca múltiplos espaços por 1
   s = s.replace(/\s+/g, ' ').trim();
 
-  // aceita "cidade uf" (sem vírgula) e transforma em "cidade,UF"
   if (!s.includes(',')) {
     const parts = s.split(' ');
     if (parts.length >= 2) {
@@ -52,57 +75,134 @@ Expressão utilizada:
       s = `${city},${uf}`;
     }
   } else {
-    // remove espaço em volta da vírgula e deixa UF maiúscula
     const [city, uf] = s.split(',').map(t => t.trim());
     s = `${city},${(uf || '').toUpperCase()}`;
   }
 
-  // adiciona país BR (muito útil pro OpenWeather)
   if (!s.endsWith(',BR')) s = `${s},BR`;
 
   return s;
 })()
 }}
 
-Exemplo:
+Exemplo de transformação:
 
-Entrada do usuário:  Uberlândia,MG
-queue gerado: Uberlândia,MG,BR
-Adicionar ",BR" ajuda a API OpenWeather a localizar corretamente cidades brasileiras.
+Entrada do usuário:
+Uberlândia,MG
 
-#Requisição para OpenWeather
+queue gerado:
+Uberlândia,MG,BR
 
-O node HTTP Request consulta a API:
+Adicionar ",BR" melhora a precisão da busca na API OpenWeather.
+
+3️⃣ Consulta à OpenWeather API
+
+O node HTTP Request realiza a consulta:
+
 https://api.openweathermap.org/data/2.5/weather
-
-Parâmetros enviados:
-| Parâmetro | Descrição        |
-| --------- | ---------------- |
-| q         | cidade formatada |
-| units     | metric (Celsius) |
-| lang      | pt_br            |
-| appid     | chave da API     |
+Parâmetros utilizados
+Parâmetro	Descrição
+q	cidade formatada
+units	metric (graus Celsius)
+lang	pt_br
+appid	chave da API
 
 Exemplo de requisição:
+
 https://api.openweathermap.org/data/2.5/weather?q=Uberlândia,MG,BR
+4️⃣ Validação da resposta
 
-#Validação da resposta
+Um node IF verifica se a resposta da API é válida.
 
-O node IF verifica se a requisição foi bem-sucedida.
+Condições avaliadas:
 
-Condições verificadas:
 statusCode = 200
 AND
 body.main.temp não está vazio
 
-Se a validação for verdadeira, o fluxo continua para gerar a resposta.
-Caso contrário, o fluxo envia uma mensagem de erro.
+Se a resposta for válida, o fluxo continua para formatação da mensagem.
 
-#Formatação da resposta
+Caso contrário, o bot retorna uma mensagem de erro.
 
-Quando a cidade é encontrada, o bot monta a mensagem final.
+5️⃣ Formatação da resposta
 
-Exemplo de expressão:
+A temperatura é extraída da resposta da API e formatada.
+
+Expressão utilizada:
+
 {{`🌤️ A temperatura em ${$json.body.name} é de ${Math.round($json.body.main.temp)}°C.`}}
-Resultado:
+
+Exemplo de saída:
+
 🌤️ A temperatura em Uberlândia é de 20°C.
+6️⃣ Envio da resposta no Telegram
+
+O node Telegram Send Message envia a resposta ao usuário utilizando:
+
+chat.id
+
+Isso garante que o bot responda diretamente na conversa do usuário.
+
+❌ Tratamento de erros
+
+Quando a cidade não é encontrada ou ocorre erro na requisição, o bot responde:
+
+❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).
+🔐 Variáveis de ambiente
+
+Para executar o projeto é necessário configurar as seguintes variáveis:
+
+OpenWeather API
+OPENWEATHER_API_KEY
+
+Obtenha gratuitamente em:
+
+https://openweathermap.org/api
+
+Telegram Bot Token
+TELEGRAM_BOT_TOKEN
+
+Crie um bot utilizando o BotFather no Telegram.
+
+📦 Como executar o projeto
+1️⃣ Instalar o n8n
+npm install n8n -g
+
+Ou utilize n8n Cloud.
+
+2️⃣ Importar o workflow
+
+No painel do n8n:
+
+Import → workflow-telegram-chatbot.json
+3️⃣ Configurar credenciais
+
+Adicione:
+
+Telegram Bot Token
+
+OpenWeather API Key
+
+4️⃣ Ativar o workflow
+
+Clique em Activate no n8n.
+
+5️⃣ Testar o bot
+
+Envie uma mensagem no Telegram:
+
+Uberlândia,MG
+
+Resposta esperada:
+
+🌤️ A temperatura em Uberlândia é de XX°C.
+📁 Estrutura do projeto
+telegram-weather-chatbot
+│
+├── workflow-telegram-chatbot.json
+├── README.md
+├── README.txt
+└── .env.example
+📜 Licença
+
+Projeto desenvolvido para fins educacionais no desafio Rocketseat utilizando n8n.
