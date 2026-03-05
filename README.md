@@ -5,14 +5,15 @@ Um chatbot automatizado no Telegram que retorna a temperatura atual de uma cidad
 O bot recebe uma mensagem no formato Cidade,UF e responde com a temperatura atual em graus Celsius.
 
 📌 Demonstração
+
 Entrada do usuário
 Uberlândia,MG
 Resposta do bot
 🌤️ A temperatura em Uberlândia é de 20°C.
 
 Caso a cidade não seja encontrada:
-
 ❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).
+
 🚀 Tecnologias utilizadas
 
 n8n — Automação de workflows
@@ -51,8 +52,8 @@ Formato esperado da mensagem:
 Cidade,UF
 
 Exemplo:
-
 Uberlândia,MG
+
 2️⃣ Normalização da entrada
 
 A mensagem enviada é transformada em uma variável chamada queue, que será utilizada na consulta da API.
@@ -108,8 +109,8 @@ lang	pt_br
 appid	chave da API
 
 Exemplo de requisição:
-
 https://api.openweathermap.org/data/2.5/weather?q=Uberlândia,MG,BR
+
 4️⃣ Validação da resposta
 
 Um node IF verifica se a resposta da API é válida.
@@ -133,8 +134,8 @@ Expressão utilizada:
 {{`🌤️ A temperatura em ${$json.body.name} é de ${Math.round($json.body.main.temp)}°C.`}}
 
 Exemplo de saída:
-
 🌤️ A temperatura em Uberlândia é de 20°C.
+
 6️⃣ Envio da resposta no Telegram
 
 O node Telegram Send Message envia a resposta ao usuário utilizando:
@@ -165,6 +166,7 @@ TELEGRAM_BOT_TOKEN
 Crie um bot utilizando o BotFather no Telegram.
 
 📦 Como executar o projeto
+
 1️⃣ Instalar o n8n
 npm install n8n -g
 
@@ -196,13 +198,16 @@ Uberlândia,MG
 Resposta esperada:
 
 🌤️ A temperatura em Uberlândia é de XX°C.
+
 📁 Estrutura do projeto
+
 telegram-weather-chatbot
 │
 ├── workflow-telegram-chatbot.json
 ├── README.md
 ├── README.txt
 └── .env.example
-📜 Licença
 
+📜 Licença
 Projeto desenvolvido para fins educacionais no desafio Rocketseat utilizando n8n.
+
